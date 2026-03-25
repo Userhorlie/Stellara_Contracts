@@ -47,7 +47,7 @@ impl FeeManager {
 
         Ok(())
     }
-    
+
     /// Collects a fee with balance validation - use when you need explicit error handling
     pub fn collect_fee_checked(
         env: &Env,
