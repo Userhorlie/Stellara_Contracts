@@ -1734,3 +1734,112 @@ model MLModel {
   @@index([isActive])
   @@map("ml_models")
 }
+
+// Secrets Management Models
+model Secret {
+  id                String   @id @default(cuid())
+  secretName        String   @unique @map("secret_name") // AWS Secrets Manager name
+  secretType        String   @map("secret_type") // "database", "api_key", "jwt", "stripe", "twilio", etc.
+  description       String?
+  rotationSchedule  String   @map("rotation_schedule") // "30d", "90d", "never"
+  lastRotatedAt     DateTime? @map("last_rotated_at")
+  nextRotationAt    DateTime? @map("next_rotation_at")
+  isActive          Boolean  @default(true) @map("is_active")
+  emergencyRevoked  Boolean  @default(false) @map("emergency_revoked")
+  revokedAt         DateTime? @map("revoked_at")
+  revokedBy         String?  @map("revoked_by")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  versions          SecretVersion[]
+  accessLogs        SecretAccessLog[]
+  rotationHistory   SecretRotation[]
+
+  @@index([secretType])
+  @@index([isActive])
+  @@index([nextRotationAt])
+  @@index([emergencyRevoked])
+  @@map("secrets")
+}
+
+model SecretVersion {
+  id                String   @id @default(cuid())
+  secretId          String   @map("secret_id")
+  versionId         String   @unique @map("version_id") // AWS version ID
+  versionStage      String   @map("version_stage") // "AWSCURRENT", "AWSPREVIOUS", etc.
+  secretValue       Json     @map("secret_value") // Encrypted secret data
+  createdAt         DateTime @default(now()) @map("created_at")
+  expiresAt         DateTime? @map("expires_at")
+
+  secret            Secret   @relation(fields: [secretId], references: [id], onDelete: Cascade)
+
+  @@index([secretId])
+  @@index([versionStage])
+  @@map("secret_versions")
+}
+
+model SecretAccessLog {
+  id                String   @id @default(cuid())
+  secretId          String   @map("secret_id")
+  accessedBy        String   @map("accessed_by") // service name, user ID, or IP
+  accessType        String   @map("access_type") // "read", "write", "rotate", "revoke"
+  accessMethod      String   @map("access_method") // "api", "sdk", "console"
+  ipAddress         String?  @map("ip_address")
+  userAgent         String?  @map("user_agent")
+  success           Boolean  @default(true)
+  errorMessage      String?  @map("error_message")
+  accessedAt        DateTime @default(now()) @map("accessed_at")
+
+  secret            Secret   @relation(fields: [secretId], references: [id], onDelete: Cascade)
+
+  @@index([secretId])
+  @@index([accessedBy])
+  @@index([accessType])
+  @@index([accessedAt])
+  @@index([success])
+  @@map("secret_access_logs")
+}
+
+model SecretRotation {
+  id                String   @id @default(cuid())
+  secretId          String   @map("secret_id")
+  rotationType      String   @map("rotation_type") // "scheduled", "manual", "emergency"
+  oldVersionId      String?  @map("old_version_id")
+  newVersionId      String   @map("new_version_id")
+  initiatedBy       String   @map("initiated_by") // service or user
+  reason            String?  // reason for rotation
+  success           Boolean  @default(true)
+  errorMessage      String?  @map("error_message")
+  rotatedAt         DateTime @default(now()) @map("rotated_at")
+
+  secret            Secret   @relation(fields: [secretId], references: [id], onDelete: Cascade)
+
+  @@index([secretId])
+  @@index([rotationType])
+  @@index([rotatedAt])
+  @@index([success])
+  @@map("secret_rotations")
+}
+
+model SecretAlert {
+  id                String   @id @default(cuid())
+  secretId          String?  @map("secret_id")
+  alertType         String   @map("alert_type") // "unusual_access", "rotation_failed", "secret_expired", "emergency_revoked"
+  severity          String   @map("severity") // "low", "medium", "high", "critical"
+  message           String
+  details           Json?    // additional alert data
+  resolved          Boolean  @default(false)
+  resolvedAt        DateTime? @map("resolved_at")
+  resolvedBy        String?  @map("resolved_by")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  secret            Secret?  @relation(fields: [secretId], references: [id])
+
+  @@index([secretId])
+  @@index([alertType])
+  @@index([severity])
+  @@index([resolved])
+  @@index([createdAt])
+  @@map("secret_alerts")
+}

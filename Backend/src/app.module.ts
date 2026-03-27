@@ -47,6 +47,7 @@ import { FailoverModule } from './failover/failover.module';
 import { CostMonitoringModule } from './cost-monitoring/cost-monitoring.module';
 import { DataResidencyModule } from './data-residency/data-residency.module';
 import { PredictiveMaintenanceModule } from './predictive-maintenance/predictive-maintenance.module';
+import { SecretsManagementModule } from './secrets-management/secrets-management.module';
 
 @Module({
   imports: [
@@ -114,6 +115,7 @@ import { PredictiveMaintenanceModule } from './predictive-maintenance/predictive
     CostMonitoringModule,
     DataResidencyModule,
     PredictiveMaintenanceModule,
+    SecretsManagementModule,
   ],
   controllers: [AppController, UserController, DocsController],
   providers: [AppService],
